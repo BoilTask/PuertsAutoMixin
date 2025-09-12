@@ -1,30 +1,30 @@
 ﻿#pragma once
 #include "JsEnv.h"
 
-#include "PuertsAutoBindSubsystem.generated.h"
+#include "PuertsAutoMixinSubsystem.generated.h"
 
-DECLARE_DYNAMIC_DELEGATE_TwoParams(FPuertsAutoBindDelegate, const UClass*, Class, const FString&, Module);
+DECLARE_DYNAMIC_DELEGATE_TwoParams(FPuertsAutoMixinDelegate, const UClass*, Class, const FString&, Module);
 
-struct FPuertsAutoBindData
+struct FPuertsAutoMixinData
 {
-	FPuertsAutoBindDelegate BindCallback;
+	FPuertsAutoMixinDelegate BindCallback;
 	TSet<const UClass*> BindedClasses;
 };
 
 UCLASS()
-class PUERTSAUTOBIND_API UPuertsAutoBindSubsystem : public UEngineSubsystem
+class PUERTSAUTOMIXIN_API UPuertsAutoMixinSubsystem : public UEngineSubsystem
 {
 	GENERATED_BODY()
 public:
-	static UPuertsAutoBindSubsystem& GetInstance()
+	static UPuertsAutoMixinSubsystem& GetInstance()
 	{
-		return *GEngine->GetEngineSubsystem<UPuertsAutoBindSubsystem>();
+		return *GEngine->GetEngineSubsystem<UPuertsAutoMixinSubsystem>();
 	}
 
-	void RegisterBindDelegate(const TSharedPtr<puerts::FJsEnv>& JsEnv, const FPuertsAutoBindDelegate& Callback);
+	void RegisterBindDelegate(const TSharedPtr<puerts::FJsEnv>& JsEnv, const FPuertsAutoMixinDelegate& Callback);
 	void Reset();
 	void CallMixin(const UClass* Class, const FString& Module);
 
 private:
-	TMap<const TSharedPtr<puerts::FJsEnv>, FPuertsAutoBindData> BindCallbacks;
+	TMap<const TSharedPtr<puerts::FJsEnv>, FPuertsAutoMixinData> BindCallbacks;
 };

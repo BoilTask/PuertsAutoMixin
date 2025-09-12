@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Modules/ModuleInterface.h"
 
-class PUERTSAUTOBIND_API IPuertsAutoBindModule : public IModuleInterface
+class PUERTSAUTOMIXIN_API IPuertsAutoMixinModule : public IModuleInterface
 {
 public:
 	/** IModuleInterface implementation */

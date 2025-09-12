@@ -1,26 +1,26 @@
-#include "PuertsAutoBindModule.h"
+#include "PuertsAutoMixinModule.h"
 
-#include "PuertsAutoBindSubsystem.h"
+#include "PuertsAutoMixinSubsystem.h"
 #include "GameDelegates.h"
 #include "PuertsInterface.h"
 
-DEFINE_LOG_CATEGORY_STATIC(LogPuertsAutoBind, Log, All);
+DEFINE_LOG_CATEGORY_STATIC(LogPuertsAutoMixin, Log, All);
 
-class FPuertsAutoBindModule : public IPuertsAutoBindModule,
+class FPuertsAutoMixinModule : public IPuertsAutoMixinModule,
                               public FUObjectArray::FUObjectCreateListener,
                               public FUObjectArray::FUObjectDeleteListener
 {
 	virtual void StartupModule() override
 	{
-		UE_LOG(LogPuertsAutoBind, Log, TEXT("PuertsAutoBindModule StartupModule"));
+		UE_LOG(LogPuertsAutoMixin, Log, TEXT("PuertsAutoMixinModule StartupModule"));
 
 #if WITH_EDITOR
 		if (!IsRunningGame())
 		{
-			FEditorDelegates::PreBeginPIE.AddRaw(this, &FPuertsAutoBindModule::OnPreBeginPIE);
-			FEditorDelegates::PostPIEStarted.AddRaw(this, &FPuertsAutoBindModule::OnPostPIEStarted);
-			FEditorDelegates::EndPIE.AddRaw(this, &FPuertsAutoBindModule::OnEndPIE);
-			FGameDelegates::Get().GetEndPlayMapDelegate().AddRaw(this, &FPuertsAutoBindModule::OnEndPlayMap);
+			FEditorDelegates::PreBeginPIE.AddRaw(this, &FPuertsAutoMixinModule::OnPreBeginPIE);
+			FEditorDelegates::PostPIEStarted.AddRaw(this, &FPuertsAutoMixinModule::OnPostPIEStarted);
+			FEditorDelegates::EndPIE.AddRaw(this, &FPuertsAutoMixinModule::OnEndPIE);
+			FGameDelegates::Get().GetEndPlayMapDelegate().AddRaw(this, &FPuertsAutoMixinModule::OnEndPlayMap);
 		}
 		if (IsRunningGame() || IsRunningDedicatedServer())
 		{
@@ -33,14 +33,14 @@ class FPuertsAutoBindModule : public IPuertsAutoBindModule,
 
 	virtual void ShutdownModule() override
 	{
-		UE_LOG(LogPuertsAutoBind, Log, TEXT("PuertsAutoBindModule ShutdownModule"));
+		UE_LOG(LogPuertsAutoMixin, Log, TEXT("PuertsAutoMixinModule ShutdownModule"));
 
 		StopBind();
 	}
 
 	void StartAutoBind()
 	{
-		UE_LOG(LogTemp, Log, TEXT("PuertsAutoBindModule StartAutoBind"));
+		UE_LOG(LogTemp, Log, TEXT("PuertsAutoMixinModule StartAutoBind"));
 
 		if (bActive)
 		{
@@ -52,7 +52,7 @@ class FPuertsAutoBindModule : public IPuertsAutoBindModule,
 
 		OnAsyncLoadingFlushUpdateHandle = FCoreDelegates::OnAsyncLoadingFlushUpdate.AddRaw(
 			this
-			, &FPuertsAutoBindModule::OnAsyncLoadingFlushUpdate
+			, &FPuertsAutoMixinModule::OnAsyncLoadingFlushUpdate
 		);
 
 		bActive = true;
@@ -60,7 +60,7 @@ class FPuertsAutoBindModule : public IPuertsAutoBindModule,
 
 	void StopBind()
 	{
-		UE_LOG(LogTemp, Log, TEXT("PuertsAutoBindModule StopBind"));
+		UE_LOG(LogTemp, Log, TEXT("PuertsAutoMixinModule StopBind"));
 
 		if (!bActive)
 		{
@@ -69,14 +69,14 @@ class FPuertsAutoBindModule : public IPuertsAutoBindModule,
 
 		StopListen();
 
-		UPuertsAutoBindSubsystem::GetInstance().Reset();
+		UPuertsAutoMixinSubsystem::GetInstance().Reset();
 
 		bActive = false;
 	}
 
 	void StopListen()
 	{
-		UE_LOG(LogTemp, Log, TEXT("PuertsAutoBindModule StopListen"));
+		UE_LOG(LogTemp, Log, TEXT("PuertsAutoMixinModule StopListen"));
 
 		GUObjectArray.RemoveUObjectCreateListener(this);
 		GUObjectArray.RemoveUObjectDeleteListener(this);
@@ -115,7 +115,7 @@ class FPuertsAutoBindModule : public IPuertsAutoBindModule,
 
 	virtual void OnUObjectArrayShutdown() override
 	{
-		UE_LOG(LogTemp, Log, TEXT("PuertsAutoBindModule OnUObjectArrayShutdown"));
+		UE_LOG(LogTemp, Log, TEXT("PuertsAutoMixinModule OnUObjectArrayShutdown"));
 
 		if (!bActive)
 		{
@@ -165,7 +165,7 @@ class FPuertsAutoBindModule : public IPuertsAutoBindModule,
 			return;
 		}
 
-		UPuertsAutoBindSubsystem::GetInstance().CallMixin(Class, Module);
+		UPuertsAutoMixinSubsystem::GetInstance().CallMixin(Class, Module);
 	}
 
 	void UnBind(const UObjectBase* Object)
@@ -205,4 +205,4 @@ private:
 	FDelegateHandle OnAsyncLoadingFlushUpdateHandle;
 };
 
-IMPLEMENT_MODULE(FPuertsAutoBindModule, PuertsAutoBind)
+IMPLEMENT_MODULE(FPuertsAutoMixinModule, PuertsAutoMixin)

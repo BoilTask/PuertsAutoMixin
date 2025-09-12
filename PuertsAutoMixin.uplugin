@@ -2,9 +2,8 @@
   "FileVersion": 3,
   "Version": 1,
   "VersionName": "1.0.2",
-  "FriendlyName": "PuertsAutoBind",
+  "FriendlyName": "PuertsAutoMixin",
   "Description": "",
-  "Category": "Event",
   "CreatedBy": "BoilTask",
   "CreatedByURL": "https://www.boiltask.com/",
   "CanContainContent": false,
@@ -14,7 +13,7 @@
   "Installed": true,
   "Modules": [
     {
-      "Name": "PuertsAutoBind",
+      "Name": "PuertsAutoMixin",
       "Type": "Runtime",
       "LoadingPhase": "PostEngineInit",
       "PlatformAllowList": [

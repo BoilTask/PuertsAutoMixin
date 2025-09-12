@@ -2,16 +2,16 @@
 
 using UnrealBuildTool;
 
-public class PuertsAutoBind : ModuleRules
+public class PuertsAutoMixin : ModuleRules
 {
-	public PuertsAutoBind(ReadOnlyTargetRules Target) : base(Target)
+	public PuertsAutoMixin(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
 		PrivateIncludePaths.AddRange(
 			new[]
 			{
-				"PuertsAutoBind/Public"
+				"PuertsAutoMixin/Public"
 			}
 		);
 

@@ -5,12 +5,12 @@
 #include "PuertsInterface.generated.h"
 
 UINTERFACE()
-class PUERTSAUTOBIND_API UPuertsInterface : public UInterface
+class PUERTSAUTOMIXIN_API UPuertsInterface : public UInterface
 {
 	GENERATED_BODY()
 };
 
-class PUERTSAUTOBIND_API IPuertsInterface
+class PUERTSAUTOMIXIN_API IPuertsInterface
 {
 	GENERATED_BODY()
 

@@ -2,11 +2,12 @@
 
 #include "PuertsAutoMixinSubsystem.h"
 #include "GameDelegates.h"
+#include "PuertsAutoMixinLibrary.h"
 #include "PuertsInterface.h"
 
-DEFINE_LOG_CATEGORY_STATIC(LogPuertsAutoMixin, Log, All);
+DEFINE_LOG_CATEGORY(LogPuertsAutoMixin);
 
-class FPuertsAutoMixinModule : public IPuertsAutoMixinModule,
+class PUERTSAUTOMIXIN_API FPuertsAutoMixinModule : public IPuertsAutoMixinModule,
                               public FUObjectArray::FUObjectCreateListener,
                               public FUObjectArray::FUObjectDeleteListener
 {
@@ -174,30 +175,6 @@ class FPuertsAutoMixinModule : public IPuertsAutoMixinModule,
 
 	void OnAsyncLoadingFlushUpdate()
 	{
-	}
-
-protected:
-	FString GetJavaScriptModule(const UObject* Object)
-	{
-		const UObject* CDO;
-		if (Object->HasAnyFlags(RF_ClassDefaultObject | RF_ArchetypeObject))
-		{
-			CDO = Object;
-		}
-		else
-		{
-			const auto Class = Cast<UClass>(Object);
-			CDO = Class ? Class->GetDefaultObject() : Object->GetClass()->GetDefaultObject();
-		}
-		if (CDO->HasAnyFlags(RF_NeedInitialization))
-		{
-			return "";
-		}
-		if (!CDO->GetClass()->ImplementsInterface(UPuertsInterface::StaticClass()))
-		{
-			return "";
-		}
-		return IPuertsInterface::Execute_GetJavaScriptModule(CDO);
 	}
 
 private:

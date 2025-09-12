@@ -23,6 +23,15 @@
         "IOS",
         "Linux"
       ]
+    },
+    {
+      "Name": "PuertsAutoMixinEditor",
+      "Type": "Editor",
+      "LoadingPhase": "Default",
+      "WhitelistPlatforms": [
+        "Win64",
+        "Mac"
+      ]
     }
   ],
   "Plugins": [

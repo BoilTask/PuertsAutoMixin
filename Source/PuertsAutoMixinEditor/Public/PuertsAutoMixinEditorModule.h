@@ -5,9 +5,7 @@
 #include "CoreMinimal.h"
 #include "Modules/ModuleInterface.h"
 
-PUERTSAUTOMIXIN_API DECLARE_LOG_CATEGORY_EXTERN(LogPuertsAutoMixin, Log, All);
-
-class PUERTSAUTOMIXIN_API IPuertsAutoMixinModule : public IModuleInterface
+class PUERTSAUTOMIXINEDITOR_API IPuertsAutoMixinEditorModule : public IModuleInterface
 {
 public:
 	/** IModuleInterface implementation */

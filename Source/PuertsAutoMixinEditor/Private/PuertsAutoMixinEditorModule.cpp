@@ -4,12 +4,15 @@
 #include "Command/PuertsAutoMixinEditorCommands.h"
 #include "Toolbar/AnimationBlueprintToolbar.h"
 #include "Toolbar/BlueprintToolbar.h"
+#include "Toolbar/PuertsAutoMixinEditorStyle.h"
 
 class FPuertsAutoMixinEditorModule : public IPuertsAutoMixinEditorModule
 {
 	virtual void StartupModule() override
 	{
 		UE_LOG(LogPuertsAutoMixin, Log, TEXT("PuertsAutoMixinEditorModule StartupModule"));
+
+		Style = FPuertsAutoMixinEditorStyle::GetInstance();
 
 		FCoreDelegates::OnPostEngineInit.AddRaw(this, &FPuertsAutoMixinEditorModule::OnPostEngineInit);
 
@@ -44,6 +47,7 @@ private:
 private:
 	TSharedPtr<FBlueprintToolbar> BlueprintToolbar;
 	TSharedPtr<FAnimationBlueprintToolbar> AnimationBlueprintToolbar;
+	TSharedPtr<ISlateStyle> Style;
 };
 
 IMPLEMENT_MODULE(FPuertsAutoMixinEditorModule, PuertsAutoMixinEditor)

@@ -1,7 +1,7 @@
 import * as UE from "ue";
 import { blueprint } from "puerts";
 
-export async function ToMinix(c: UE.Class, m: string) {
+export function ToMinix(c: UE.Class, m: string) {
     let modulePath = m;
     let exportName: string | null = null;
     if (m.includes(":")) {
@@ -9,7 +9,7 @@ export async function ToMinix(c: UE.Class, m: string) {
         modulePath = parts[0];
         exportName = parts[1];
     }
-    const mod = await import(modulePath);
+    const mod = require(modulePath);
     const TargetClass = exportName ? mod[exportName] : mod.default;
     if (!TargetClass) {
         throw new Error(`not found: ${m}`);

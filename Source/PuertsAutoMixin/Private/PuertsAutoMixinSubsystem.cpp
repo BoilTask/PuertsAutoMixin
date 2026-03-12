@@ -41,6 +41,7 @@ void UPuertsAutoMixinSubsystem::CallMixin(const UClass* Class, const FString& Mo
 		Data.BindedModules.Emplace(Module);
 		if (Data.BindCallback.IsBound())
 		{
+			SCOPED_NAMED_EVENT(UPuertsAutoMixin_Mixin, FColor::Red);
 			Data.BindCallback.Execute(Class, Module);
 		}
 	}

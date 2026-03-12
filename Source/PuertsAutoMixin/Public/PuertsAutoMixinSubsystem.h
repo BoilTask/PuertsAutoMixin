@@ -9,6 +9,7 @@ struct FPuertsAutoMixinData
 {
 	FPuertsAutoMixinDelegate BindCallback;
 	TSet<const UClass*> BindedClasses;
+	TSet<FString> BindedModules;
 };
 
 UCLASS()

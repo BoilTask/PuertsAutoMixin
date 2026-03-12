@@ -39,7 +39,7 @@ EPuertsBindingStatus GetBindingStatus(const UBlueprint* Blueprint)
 	return EPuertsBindingStatus::Bound;
 }
 
-FString GetScriptRealPath(FString Module)
+FString GetScriptRealPath(const FString& Module)
 {
 	const auto& RootPath = TEXT("TypeScript");
 	const auto ScriptPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + RootPath);

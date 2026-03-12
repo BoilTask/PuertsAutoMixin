@@ -17,4 +17,4 @@ enum EPuertsBindingStatus
 
 /* 获取指定蓝图对象上的Puerts绑定状态 */
 EPuertsBindingStatus GetBindingStatus(const UBlueprint* Blueprint);
-FString GetScriptRealPath(FString Module);
+FString GetScriptRealPath(const FString& Module);

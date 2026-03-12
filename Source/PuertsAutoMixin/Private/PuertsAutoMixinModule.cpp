@@ -160,13 +160,37 @@ class PUERTSAUTOMIXIN_API FPuertsAutoMixinModule : public IPuertsAutoMixinModule
 			return;
 		}
 
-		const auto& Module = GetJavaScriptModule(Object);
-		if (Module.IsEmpty())
+		// 递归查找所有父类，从最顶层的UObject子类开始绑定
+		TArray<const UClass*> ClassHierarchy;
+		const UClass* CurrentClass = Class;
+		while (CurrentClass && CurrentClass->IsChildOf<UObject>())
 		{
-			return;
+			ClassHierarchy.Add(CurrentClass);
+			CurrentClass = CurrentClass->GetSuperClass();
 		}
 
-		UPuertsAutoMixinSubsystem::GetInstance().CallMixin(Class, Module);
+		for (int32 i = ClassHierarchy.Num() - 1; i >= 0; --i)
+		{
+			const UClass* HierarchyClass = ClassHierarchy[i];
+			if (!HierarchyClass->ImplementsInterface(InterfaceClass))
+			{
+				continue;
+			}
+
+			const UObject* CDO = HierarchyClass->GetDefaultObject();
+			if (!CDO || CDO->HasAnyFlags(RF_NeedInitialization))
+			{
+				continue;
+			}
+
+			FString HierarchyModule = IPuertsInterface::Execute_GetJavaScriptModule(CDO);
+			if (HierarchyModule.IsEmpty())
+			{
+				continue;
+			}
+
+			UPuertsAutoMixinSubsystem::GetInstance().CallMixin(HierarchyClass, HierarchyModule);
+		}
 	}
 
 	void UnBind(const UObjectBase* Object)

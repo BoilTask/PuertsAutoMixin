@@ -33,7 +33,12 @@ void UPuertsAutoMixinSubsystem::CallMixin(const UClass* Class, const FString& Mo
 		{
 			continue;
 		}
+		if (Data.BindedModules.Contains(Module))
+		{
+			continue;
+		}
 		Data.BindedClasses.Emplace(Class);
+		Data.BindedModules.Emplace(Module);
 		if (Data.BindCallback.IsBound())
 		{
 			Data.BindCallback.Execute(Class, Module);

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "JsEnv.h"
 
 #include "PuertsAutoMixinSubsystem.generated.h"
@@ -22,9 +22,13 @@ public:
 		return *GEngine->GetEngineSubsystem<UPuertsAutoMixinSubsystem>();
 	}
 
+	void TryBind(UObject* Object, FPuertsAutoMixinData* SpecificData = nullptr);
 	void RegisterBindDelegate(const TSharedPtr<puerts::FJsEnv>& JsEnv, const FPuertsAutoMixinDelegate& Callback);
 	void Reset();
-	void CallMixin(const UClass* Class, const FString& Module);
+
+private:
+	FORCEINLINE void CallMixin(const UClass* Class, const FString& Module, FPuertsAutoMixinData* SpecificData = nullptr);
+	FORCEINLINE void ExecuteMixin(FPuertsAutoMixinData& Data, const UClass* Class, const FString& Module);
 
 private:
 	TMap<const TSharedPtr<puerts::FJsEnv>, FPuertsAutoMixinData> BindCallbacks;

@@ -1,10 +1,14 @@
 #include "PuertsAutoMixinEditorModule.h"
 
+#include "ISettingsModule.h"
 #include "PuertsAutoMixinModule.h"
+#include "PuertsAutoMixinSetting.h"
 #include "Command/PuertsAutoMixinEditorCommands.h"
 #include "Toolbar/AnimationBlueprintToolbar.h"
 #include "Toolbar/BlueprintToolbar.h"
 #include "Toolbar/PuertsAutoMixinEditorStyle.h"
+
+#define LOCTEXT_NAMESPACE "PuertsAutoMixinEditor"
 
 class FPuertsAutoMixinEditorModule : public IPuertsAutoMixinEditorModule
 {
@@ -20,6 +24,22 @@ class FPuertsAutoMixinEditorModule : public IPuertsAutoMixinEditorModule
 
 		BlueprintToolbar = MakeShareable(new FBlueprintToolbar);
 		AnimationBlueprintToolbar = MakeShareable(new FAnimationBlueprintToolbar);
+
+		const auto SettingsModule = FModuleManager::GetModulePtr<ISettingsModule>("Settings");
+		if (SettingsModule)
+		{
+			SettingsModule->RegisterSettings("Project"
+			                                 , "Plugins"
+			                                 , "PuertsAutoMixin"
+			                                 , LOCTEXT("PuertsAutoMixinEditorSetting_PuertsAutoMixin"
+			                                           , "PuertsAutoMixin"
+			                                 )
+			                                 , LOCTEXT("PuertsAutoMixinEditorSetting_PuertsAutoMixin_Description"
+			                                           , "configuration for PuertsAutoMixin."
+			                                 )
+			                                 , GetMutableDefault<UPuertsAutoMixinSetting>()
+			);
+		}
 	}
 
 	virtual void ShutdownModule() override

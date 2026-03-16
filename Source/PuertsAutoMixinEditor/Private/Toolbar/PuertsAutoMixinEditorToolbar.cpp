@@ -346,13 +346,15 @@ void FPuertsAutoMixinEditorToolbar::CreatePuertsTemplate_Executed()
 	}
 
 	static FString BaseDir = IPluginManager::Get().FindPlugin(TEXT("PuertsAutoMixin"))->GetBaseDir();
+
+	bool bFoundTemplate = false;
 	for (auto TemplateClass = Class; TemplateClass; TemplateClass = TemplateClass->GetSuperClass())
 	{
 		auto TemplateClassName = TemplateClass->GetName().EndsWith("_C")
 			                         ? TemplateClass->GetName().LeftChop(2)
 			                         : TemplateClass->GetName();
-		auto RelativeFilePath = "TsTemplates" / TemplateClassName + ".ts";
-		auto FullFilePath = FPaths::ProjectConfigDir() / RelativeFilePath;
+		auto RelativeFilePath = "Config/TsTemplates" / TemplateClassName + ".ts";
+		auto FullFilePath = FPaths::ProjectDir() / RelativeFilePath;
 		if (!FPaths::FileExists(FullFilePath))
 		{
 			FullFilePath = BaseDir / RelativeFilePath;
@@ -374,7 +376,16 @@ void FPuertsAutoMixinEditorToolbar::CreatePuertsTemplate_Executed()
 		Content = Content.Replace(TEXT("ClassName"), *PuertsModuleName);
 
 		FFileHelper::SaveStringToFile(Content, *FileName, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+
+		bFoundTemplate = true;
 		break;
+	}
+	if (!bFoundTemplate)
+	{
+		UE_LOG(LogPuertsAutoMixin
+		       , Error
+		       , TEXT("No template found for class %s and its super classes!"), *Class->GetName()
+		);
 	}
 }
 

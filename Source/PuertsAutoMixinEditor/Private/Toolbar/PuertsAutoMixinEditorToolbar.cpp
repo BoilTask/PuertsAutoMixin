@@ -189,7 +189,12 @@ void FPuertsAutoMixinEditorToolbar::BindToPuerts_Executed() const
 		return;
 	}
 
+#if ENGINE_MAJOR_VERSION >=5 && ENGINE_MINOR_VERSION >= 1
+	const auto Ok = FBlueprintEditorUtils::ImplementNewInterface(Blueprint, UPuertsInterface::StaticClass()->GetClassPathName());
+#else
 	const auto Ok = FBlueprintEditorUtils::ImplementNewInterface(Blueprint, FName("PuertsInterface"));
+#endif
+
 	if (!Ok)
 	{
 		return;
@@ -249,7 +254,11 @@ void FPuertsAutoMixinEditorToolbar::UnbindFromPuerts_Executed() const
 		return;
 	}
 
+#if ENGINE_MAJOR_VERSION >=5 && ENGINE_MINOR_VERSION >= 1
+	FBlueprintEditorUtils::RemoveInterface(Blueprint, UPuertsInterface::StaticClass()->GetClassPathName());
+#else
 	FBlueprintEditorUtils::RemoveInterface(Blueprint, FName("PuertsInterface"));
+#endif
 
 #if ENGINE_MAJOR_VERSION > 4 || (ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 26)
 

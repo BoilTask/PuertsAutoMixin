@@ -342,7 +342,7 @@ void FPuertsAutoMixinEditorToolbar::CreatePuertsTemplate_Executed()
 		auto TemplateClassName = TemplateClass->GetName().EndsWith("_C")
 			                         ? TemplateClass->GetName().LeftChop(2)
 			                         : TemplateClass->GetName();
-		auto RelativeFilePath = "Config/TsTemplates" / TemplateClassName + ".ts";
+		auto RelativeFilePath = "TsTemplates" / TemplateClassName + ".ts";
 		auto FullFilePath = FPaths::ProjectConfigDir() / RelativeFilePath;
 		if (!FPaths::FileExists(FullFilePath))
 		{

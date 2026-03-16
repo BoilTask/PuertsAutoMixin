@@ -365,7 +365,7 @@ void FPuertsAutoMixinEditorToolbar::CreatePuertsTemplate_Executed()
 			continue;
 		}
 
-		const auto Package = Blueprint->GetTypedOuter(UPackage::StaticClass());
+		const auto Package = Blueprint->GetPackage();
 		FString PuertsModuleName = Package->GetName();
 		PuertsModuleName = PuertsModuleName.Replace(TEXT("/"), TEXT("."));
 		PuertsModuleName = TEXT("UE") + PuertsModuleName;

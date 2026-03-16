@@ -1,5 +1,7 @@
 #pragma once
+
 #include "JsEnv.h"
+#include "SourceFileWatcher.h"
 
 #include "PuertsAutoMixinSubsystem.generated.h"
 
@@ -13,7 +15,9 @@ struct FPuertsAutoMixinData
 };
 
 UCLASS()
-class PUERTSAUTOMIXIN_API UPuertsAutoMixinSubsystem : public UEngineSubsystem
+class PUERTSAUTOMIXIN_API UPuertsAutoMixinSubsystem : public UEngineSubsystem,
+							  public FUObjectArray::FUObjectCreateListener,
+							  public FUObjectArray::FUObjectDeleteListener
 {
 	GENERATED_BODY()
 public:
@@ -21,6 +25,33 @@ public:
 	{
 		return *GEngine->GetEngineSubsystem<UPuertsAutoMixinSubsystem>();
 	}
+
+	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
+
+	virtual void Deinitialize() override;
+
+	void StartAutoBind();
+
+	void StopBind();
+
+	void StopListen();
+
+	void OnPreBeginPIE(bool bIsSimulating);
+
+	void OnPostPIEStarted(bool bIsSimulating);
+
+	void OnEndPIE(bool bIsSimulating);
+
+	void OnEndPlayMap();
+
+	virtual void NotifyUObjectCreated(const UObjectBase* ObjectBase, int32 Index) override;
+
+	virtual void NotifyUObjectDeleted(const UObjectBase* ObjectBase, int32 Index) override;
+
+	virtual void OnUObjectArrayShutdown() override;
+
+	UFUNCTION()
+	void OnAsyncLoadingFlushUpdate();
 
 	void TryBind(UObject* Object, FPuertsAutoMixinData* SpecificData = nullptr);
 	void RegisterBindDelegate(const TSharedPtr<puerts::FJsEnv>& JsEnv, const FPuertsAutoMixinDelegate& Callback);
@@ -31,5 +62,26 @@ private:
 	FORCEINLINE void ExecuteMixin(FPuertsAutoMixinData& Data, const UClass* Class, const FString& Module);
 
 private:
+	bool bActive = false;
+	FDelegateHandle OnAsyncLoadingFlushUpdateHandle;
+	FCriticalSection CandidatesLock;
+	TArray<FWeakObjectPtr> Candidates; // binding candidates during async loading
+
+public:
+	UFUNCTION(BlueprintCallable)
+	void BindMixin(const FPuertsAutoMixinDelegate& BindCallback);
+
+private:
+	void StartJavaScript();
+	void HotReloadJavaScriptEnv(const FString& Path);
+
+private:
 	TMap<const TSharedPtr<puerts::FJsEnv>, FPuertsAutoMixinData> BindCallbacks;
+
+private:
+	TSharedPtr<puerts::FJsEnv> DefaultJsEnv;
+
+#if WITH_EDITOR
+	TSharedPtr<PUERTS_NAMESPACE::FSourceFileWatcher> SourceFileWatcher;
+#endif
 };

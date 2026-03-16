@@ -18,7 +18,7 @@ public class PuertsAutoMixin : ModuleRules
 		PublicDependencyModuleNames.AddRange(
 			new[]
 			{
-				"Core", "JsEnv"
+				"Core"
 			}
 		);
 
@@ -34,8 +34,11 @@ public class PuertsAutoMixin : ModuleRules
 				"Json",
 				"JsonUtilities",
 				"Puerts",
+				"JsEnv"
 			}
 		);
+
+		OptimizeCode = CodeOptimization.InShippingBuildsOnly;
 
 		if (Target.bBuildEditor)
 		{

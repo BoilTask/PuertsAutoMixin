@@ -25,6 +25,10 @@ public:
     )
     bool bEnableEnvInGame = false;
 
+    UPROPERTY(config, EditAnywhere, Category = "Default PuertsAutoMixin Environment",
+        meta = (defaultValue = "EditorStart"))
+    FString StartModule = "EditorStart";
+
     UPROPERTY(
         config
         , EditAnywhere

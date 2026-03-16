@@ -1,6 +1,199 @@
 ﻿#include "PuertsAutoMixinSubsystem.h"
 
+#include "PuertsAutoMixinModule.h"
+#include "PuertsAutoMixinSetting.h"
 #include "PuertsInterface.h"
+
+constexpr EInternalObjectFlags AsyncObjectFlags = EInternalObjectFlags_AsyncLoading | EInternalObjectFlags::Async;
+
+void UPuertsAutoMixinSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+	UE_LOG(LogPuertsAutoMixin, Log, TEXT("PuertsAutoMixinSubsystem StartupModule"));
+
+	Super::Initialize(Collection);
+
+#if WITH_EDITOR
+	StartAutoBind();
+	// if (!IsRunningGame())
+	// {
+	// 	FEditorDelegates::PreBeginPIE.AddRaw(this, &FPuertsAutoMixinModule::OnPreBeginPIE);
+	// 	FEditorDelegates::PostPIEStarted.AddRaw(this, &FPuertsAutoMixinModule::OnPostPIEStarted);
+	// 	FEditorDelegates::EndPIE.AddRaw(this, &FPuertsAutoMixinModule::OnEndPIE);
+	// 	FGameDelegates::Get().GetEndPlayMapDelegate().AddRaw(this, &FPuertsAutoMixinModule::OnEndPlayMap);
+	// }
+	// if (IsRunningGame() || IsRunningDedicatedServer())
+	// {
+	// 	StartAutoBind();
+	// }
+#else
+	StartAutoBind();
+#endif
+
+	StartJavaScript();
+}
+
+void UPuertsAutoMixinSubsystem::Deinitialize()
+{
+	UE_LOG(LogPuertsAutoMixin, Log, TEXT("PuertsAutoMixinSubsystem ShutdownModule"));
+
+	StopBind();
+
+	if (DefaultJsEnv.IsValid())
+	{
+		DefaultJsEnv.Reset();
+	}
+	if (SourceFileWatcher.IsValid())
+	{
+		SourceFileWatcher.Reset();
+	}
+
+	Super::Deinitialize();
+}
+
+void UPuertsAutoMixinSubsystem::StartAutoBind()
+{
+	UE_LOG(LogPuertsAutoMixin, Log, TEXT("PuertsAutoMixinSubsystem StartAutoBind"));
+
+	if (bActive)
+	{
+		return;
+	}
+
+	GUObjectArray.AddUObjectCreateListener(this);
+	GUObjectArray.AddUObjectDeleteListener(this);
+
+	OnAsyncLoadingFlushUpdateHandle = FCoreDelegates::OnAsyncLoadingFlushUpdate.AddUObject(
+		this
+		, &UPuertsAutoMixinSubsystem::OnAsyncLoadingFlushUpdate
+	);
+
+	bActive = true;
+}
+
+void UPuertsAutoMixinSubsystem::StopBind()
+{
+	UE_LOG(LogPuertsAutoMixin, Log, TEXT("PuertsAutoMixinSubsystem StopBind"));
+
+	if (!bActive)
+	{
+		return;
+	}
+
+	StopListen();
+
+	Reset();
+
+	bActive = false;
+}
+
+void UPuertsAutoMixinSubsystem::StopListen()
+{
+	UE_LOG(LogPuertsAutoMixin, Log, TEXT("PuertsAutoMixinSubsystem StopListen"));
+
+	GUObjectArray.RemoveUObjectCreateListener(this);
+	GUObjectArray.RemoveUObjectDeleteListener(this);
+
+	FCoreDelegates::OnAsyncLoadingFlushUpdate.Remove(OnAsyncLoadingFlushUpdateHandle);
+}
+
+void UPuertsAutoMixinSubsystem::OnPreBeginPIE(bool bIsSimulating)
+{
+	StartAutoBind();
+}
+
+void UPuertsAutoMixinSubsystem::OnPostPIEStarted(bool bIsSimulating)
+{
+}
+
+void UPuertsAutoMixinSubsystem::OnEndPIE(bool bIsSimulating)
+{
+}
+
+void UPuertsAutoMixinSubsystem::BindMixin(const FPuertsAutoMixinDelegate& BindCallback)
+{
+	RegisterBindDelegate(DefaultJsEnv, BindCallback);
+}
+
+void UPuertsAutoMixinSubsystem::OnEndPlayMap()
+{
+	StopBind();
+}
+
+void UPuertsAutoMixinSubsystem::NotifyUObjectCreated(const UObjectBase* ObjectBase, int32 Index)
+{
+	UObject* Object = (UObject*)ObjectBase;
+	TryBind(Object);
+}
+
+void UPuertsAutoMixinSubsystem::NotifyUObjectDeleted(const UObjectBase* ObjectBase, int32 Index)
+{
+}
+
+void UPuertsAutoMixinSubsystem::OnUObjectArrayShutdown()
+{
+	UE_LOG(LogPuertsAutoMixin, Log, TEXT("PuertsAutoMixinSubsystem OnUObjectArrayShutdown"));
+
+	if (!bActive)
+	{
+		return;
+	}
+
+	StopListen();
+
+	bActive = false;
+}
+
+void UPuertsAutoMixinSubsystem::OnAsyncLoadingFlushUpdate()
+{
+	TArray<FWeakObjectPtr> CandidatesTemp;
+	TArray<int> CandidatesRemovedIndexes;
+
+	TArray<UObject*> LocalCandidates;
+	{
+		{
+			FScopeLock Lock(&CandidatesLock);
+			CandidatesTemp.Append(Candidates);
+		}
+
+
+		for (int32 i = CandidatesTemp.Num() - 1; i >= 0; --i)
+		{
+			FWeakObjectPtr ObjectPtr = CandidatesTemp[i];
+			if (!ObjectPtr.IsValid())
+			{
+				// discard invalid objects
+				CandidatesRemovedIndexes.Add(i);
+				continue;
+			}
+
+			UObject* Object = ObjectPtr.Get();
+			if (Object->HasAnyFlags(RF_NeedPostLoad)
+				|| Object->HasAnyInternalFlags(AsyncObjectFlags)
+				|| Object->GetClass()->HasAnyInternalFlags(AsyncObjectFlags))
+			{
+				// delay bind on next update
+				continue;
+			}
+
+			LocalCandidates.Add(Object);
+			CandidatesRemovedIndexes.Add(i);
+		}
+	}
+
+	{
+		FScopeLock Lock(&CandidatesLock);
+		for (int32 j = 0; j < CandidatesRemovedIndexes.Num(); ++j)
+		{
+			Candidates.RemoveAt(CandidatesRemovedIndexes[j]);
+		}
+	}
+
+	for (int32 i = 0; i < LocalCandidates.Num(); ++i)
+	{
+		UObject* Object = LocalCandidates[i];
+		TryBind(Object);
+	}
+}
 
 void UPuertsAutoMixinSubsystem::TryBind(UObject* Object, FPuertsAutoMixinData* SpecificData)
 {
@@ -51,7 +244,15 @@ void UPuertsAutoMixinSubsystem::TryBind(UObject* Object, FPuertsAutoMixinData* S
 			continue;
 		}
 
-		const UObject* CDO = HierarchyClass->GetDefaultObject();
+		const UObject* CDO;
+		if (Object->HasAnyFlags(RF_ClassDefaultObject | RF_ArchetypeObject))
+		{
+			CDO = Object;
+		}
+		else
+		{
+			CDO = Class ? Class->GetDefaultObject() : Object->GetClass()->GetDefaultObject();
+		}
 		if (!CDO || CDO->HasAnyFlags(RF_NeedInitialization))
 		{
 			continue;
@@ -87,6 +288,66 @@ void UPuertsAutoMixinSubsystem::Reset()
 	Instance.BindCallbacks.Empty();
 }
 
+void UPuertsAutoMixinSubsystem::StartJavaScript()
+{
+	UPuertsAutoMixinSetting* Setting = GetMutableDefault<UPuertsAutoMixinSetting>();
+	if (!IsValid(Setting))
+	{
+		UE_LOG(LogPuertsAutoMixin, Error, TEXT("UPuertsAutoMixinSetting is invalid"));
+		return;
+	}
+	std::function<void(const FString&)> SourceLoadedCallback = nullptr;
+#if WITH_EDITOR
+	SourceFileWatcher = MakeShared<PUERTS_NAMESPACE::FSourceFileWatcher>(
+		[this](const FString& InPath)
+		{
+			HotReloadJavaScriptEnv(InPath);
+		}
+	);
+	SourceLoadedCallback = [this](const FString& InPath)
+	{
+		if (SourceFileWatcher.IsValid())
+		{
+			SourceFileWatcher->OnSourceLoaded(InPath);
+		}
+	};
+#endif
+
+	DefaultJsEnv = MakeShared<puerts::FJsEnv>(std::make_unique<puerts::DefaultJSModuleLoader>(
+										   TEXT("JavaScript")
+									   )
+									   , std::make_shared<puerts::FDefaultLogger>()
+									   , Setting->DebugPort
+									   , SourceLoadedCallback
+
+	);
+	TArray<TPair<FString, UObject*>> Arguments;
+	Arguments.Add(TPair<FString, UObject*>(TEXT("JsHandler"), this));
+	if (Setting->WaitDebugger)
+	{
+		DefaultJsEnv->WaitDebugger(Setting->WaitDebuggerTimeout);
+	}
+	DefaultJsEnv->Start(Setting->StartModule, Arguments);
+}
+
+void UPuertsAutoMixinSubsystem::HotReloadJavaScriptEnv(const FString& Path)
+{
+	if (DefaultJsEnv.IsValid())
+	{
+		TArray<uint8> Source;
+		if (FFileHelper::LoadFileToArray(Source, *Path))
+		{
+			UE_LOG(LogPuertsAutoMixin, Log, TEXT("start ReloadSource %s"), *Path);
+			DefaultJsEnv->ReloadSource(Path, puerts::PString(reinterpret_cast<const char*>(Source.GetData()), Source.Num()));
+			UE_LOG(LogPuertsAutoMixin, Log, TEXT("end ReloadSource %s"), *Path);
+		}
+		else
+		{
+			UE_LOG(LogPuertsAutoMixin, Error, TEXT("read file fail for %s"), *Path);
+		}
+	}
+}
+
 void UPuertsAutoMixinSubsystem::CallMixin(const UClass* Class, const FString& Module, FPuertsAutoMixinData* SpecificData)
 {
 	auto& Instance = GetInstance();
@@ -119,9 +380,11 @@ void UPuertsAutoMixinSubsystem::ExecuteMixin(FPuertsAutoMixinData& Data, const U
 	}
 	Data.BindedClasses.Emplace(Class);
 	Data.BindedModules.Emplace(Module);
+
+	SCOPED_NAMED_EVENT(UPuertsAutoMixin_Mixin, FColor::Red);
+
 	if (Data.BindCallback.IsBound())
 	{
-		SCOPED_NAMED_EVENT(UPuertsAutoMixin_Mixin, FColor::Red);
 		Data.BindCallback.Execute(Class, Module);
 	}
 }

@@ -5,7 +5,7 @@
 #include "PuertsAutoMixinSetting.generated.h"
 
 UCLASS(config = PuertsAutoMixin, defaultconfig, meta = (DisplayName = "PuertsAutoMixin"))
-class UPuertsAutoMixinSetting : public UObject
+class PUERTSAUTOMIXIN_API UPuertsAutoMixinSetting : public UObject
 {
     GENERATED_BODY()
 

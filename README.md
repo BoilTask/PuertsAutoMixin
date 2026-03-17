@@ -4,7 +4,7 @@
 
 比起常规的思路，核心是监听Object创建时才真正执行绑定，避免一启动就需要加载所有蓝图类。
 
-> 修改Plugins\PuertsAutoMixin\Config\TsTemplates下的模板文件，可以改变生成模板时的文件。
+> 可以在项目Config下创建TsTemplates文件夹，参考Plugins\PuertsAutoMixin\Config\TsTemplates编写模板文件，可以改变生成模板时的文件。
 
 使用方式可以参考：[https://github.com/BoilTask/puerts-ue-template](https://github.com/BoilTask/puerts-ue-template)
 

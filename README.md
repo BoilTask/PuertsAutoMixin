@@ -1,3 +1,5 @@
+## 项目简介
+
 用于支持类`Unlua`式的`Puerts`开发体验，允许通过给类添加`PuertsInterface`来绑定脚本（`mixin`）。
 
 开发中，提供思路和基础实现，遇见奇奇怪怪的问题欢迎提`issue`。
@@ -8,6 +10,15 @@
 
 使用方式可以参考：[https://github.com/BoilTask/puerts-ue-template](https://github.com/BoilTask/puerts-ue-template)
 
-参考项目：
+## 实现功能
+
+比起原始`Puerts`和同类型其他插件，重点解决以下机制：
+
+- 按需mixin而非启动时全部加载
+- 每个类（C++类或蓝图类）指定绑定的JavaScript类
+- 编辑器下mixin支持（Beta）
+
+## 参考项目
+
 - [Puerts](https://github.com/Tencent/Puerts)
 - [UnLua](https://github.com/Tencent/UnLua)

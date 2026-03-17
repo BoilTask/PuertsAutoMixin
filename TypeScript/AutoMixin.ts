@@ -10,7 +10,7 @@ function getInheritanceChain(cls: Constructor): Constructor[] {
 
     while (current && !visited.has(current)) {
         visited.add(current);
-        if (current.prototype && typeof current.prototype === 'object') {
+        if (current.prototype && typeof current.prototype === "object") {
             chain.push(current);
         }
         const proto = Object.getPrototypeOf(current);
@@ -29,9 +29,9 @@ function collectMethods(chain: Constructor[]): { [key: string]: Function } {
         const cls = chain[i];
         const names = Object.getOwnPropertyNames(cls.prototype);
         for (const name of names) {
-            if (name === 'constructor') continue;
+            if (name === "constructor") continue;
             const descriptor = Object.getOwnPropertyDescriptor(cls.prototype, name);
-            if (descriptor && typeof descriptor.value === 'function') {
+            if (descriptor && typeof descriptor.value === "function") {
                 methods[name] = descriptor.value;
             }
         }
@@ -40,6 +40,11 @@ function collectMethods(chain: Constructor[]): { [key: string]: Function } {
 }
 
 export function ToMinix(c: UE.Class, m: string) {
+    if (!m) {
+        blueprint.unmixin(blueprint.tojs(c));
+        return;
+    }
+
     let modulePath = m;
     let exportName: string | null = null;
     if (m.includes(":")) {
@@ -56,7 +61,7 @@ export function ToMinix(c: UE.Class, m: string) {
     const chain = getInheritanceChain(TargetClass);
     const methods = collectMethods(chain);
 
-    const MergedClass = function() {} as unknown as Constructor;
+    const MergedClass = function () {} as unknown as Constructor;
     MergedClass.prototype = Object.create({});
     for (const name in methods) {
         MergedClass.prototype[name] = methods[name];

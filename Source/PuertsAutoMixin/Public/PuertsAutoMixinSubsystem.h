@@ -10,9 +10,8 @@ DECLARE_DYNAMIC_DELEGATE_TwoParams(FPuertsAutoMixinDelegate, const UClass*, Clas
 struct FPuertsAutoMixinData
 {
 	FPuertsAutoMixinDelegate BindCallback;
-	TSet<const UClass*> BindedClasses;
+	TMap<const UClass*, FString> BindedClasses;
 	TSet<FString> BindedModules;
-	TMap<const UClass*, FString> ClassToModule;
 };
 
 UCLASS()
@@ -84,5 +83,6 @@ private:
 
 #if WITH_EDITOR
 	TSharedPtr<PUERTS_NAMESPACE::FSourceFileWatcher> SourceFileWatcher;
+	TSet<TWeakObjectPtr<UClass>> BindedClasses;
 #endif
 };

@@ -19,6 +19,11 @@
 - 父子类mixin支持（纯TypeScript类与UObject基类）
 - 编辑器下mixin支持（Beta）
 
+待解决问题：
+
+- [ ] 当父类蓝图与子类蓝图分别mixin一个TS类时，覆写相同函数会崩溃
+  - [ ] 不支持JS函数重复覆写同一个函数
+
 ## 参考项目
 
 - [Puerts](https://github.com/Tencent/Puerts)

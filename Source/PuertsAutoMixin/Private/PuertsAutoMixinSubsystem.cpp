@@ -6,6 +6,10 @@
 #include "PuertsAutoMixinSetting.h"
 #include "PuertsInterface.h"
 
+#if WITH_EDITOR
+	static FName SpecialFunctionName = FName(TEXT("__PuertsAutoMixinSucceeded"));
+#endif
+
 constexpr EInternalObjectFlags AsyncObjectFlags = EInternalObjectFlags_AsyncLoading | EInternalObjectFlags::Async;
 
 void UPuertsAutoMixinSubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -42,7 +46,7 @@ void UPuertsAutoMixinSubsystem::Deinitialize()
 
 	StopBind();
 
-	StopJavaScript();
+	Reset();
 
 	Super::Deinitialize();
 }
@@ -100,7 +104,7 @@ void UPuertsAutoMixinSubsystem::OnPreBeginPIE(bool bIsSimulating)
 	auto Setting = GetMutableDefault<UPuertsAutoMixinSetting>();
 	if (!Setting->bEnableEnvInGame)
 	{
-		StopJavaScript();
+		Reset();
 	}
 }
 
@@ -222,8 +226,8 @@ void UPuertsAutoMixinSubsystem::TryBind(UObject* Object, FPuertsAutoMixinData* S
 		if (bImplPuertsInterface)
 		{
 			// 等加载完再绑定
-			// FScopeLock Lock(&CandidatesLock);
-			// Candidates.AddUnique(Object);
+			FScopeLock Lock(&CandidatesLock);
+			Candidates.AddUnique(Object);
 			return;
 		}
 	}
@@ -247,6 +251,31 @@ void UPuertsAutoMixinSubsystem::TryBind(UObject* Object, FPuertsAutoMixinData* S
 		CurrentClass = CurrentClass->GetSuperClass();
 	}
 
+#if WITH_EDITOR
+	if (BindedClasses.Contains(Class))
+	{
+		// 如果发现特殊标记被删除，说明可能蓝图被Recompile，重新绑定相关模块
+		if (!Class->FindFunctionByName(SpecialFunctionName, EIncludeSuperFlag::Type::ExcludeSuper))
+		{
+			for (int32 i = ClassHierarchy.Num() - 1; i >= 0; --i)
+			{
+				UClass* HierarchyClass = ClassHierarchy[i];
+				for (auto& It : BindCallbacks)
+				{
+					auto& Data = It.Value;
+					if (const auto& Module = Data.BindedClasses.Find(HierarchyClass))
+					{
+						Data.BindedModules.Remove(*Module);
+						Data.BindedClasses.Remove(HierarchyClass);
+						Data.BindCallback.ExecuteIfBound(HierarchyClass, FString());
+					}
+				}
+				BindedClasses.Remove(HierarchyClass);
+			}
+		}
+	}
+#endif
+
 	for (int32 i = ClassHierarchy.Num() - 1; i >= 0; --i)
 	{
 		UClass* HierarchyClass = ClassHierarchy[i];
@@ -255,15 +284,7 @@ void UPuertsAutoMixinSubsystem::TryBind(UObject* Object, FPuertsAutoMixinData* S
 			continue;
 		}
 
-		const UObject* CDO;
-		if (Object->HasAnyFlags(RF_ClassDefaultObject | RF_ArchetypeObject))
-		{
-			CDO = Object;
-		}
-		else
-		{
-			CDO = Class ? Class->GetDefaultObject() : Object->GetClass()->GetDefaultObject();
-		}
+		const UObject* CDO = HierarchyClass->GetDefaultObject(false);
 		if (!CDO || CDO->HasAnyFlags(RF_NeedInitialization))
 		{
 			continue;
@@ -274,6 +295,17 @@ void UPuertsAutoMixinSubsystem::TryBind(UObject* Object, FPuertsAutoMixinData* S
 		{
 			continue;
 		}
+
+#if WITH_EDITOR
+		// 给绑定过的Class增加一个特殊的标记，用于判断是否绑定过，兼容重编译导致的重置
+		if (!HierarchyClass->FindFunctionByName(SpecialFunctionName, EIncludeSuperFlag::Type::ExcludeSuper))
+		{
+			auto Func = NewObject<UFunction>(HierarchyClass, SpecialFunctionName);
+			HierarchyClass->AddFunctionToFunctionMap(Func, SpecialFunctionName);
+			BindedClasses.Emplace(HierarchyClass);
+		}
+#endif
+
 		CallMixin(HierarchyClass, HierarchyModule, SpecificData);
 	}
 }
@@ -295,6 +327,12 @@ void UPuertsAutoMixinSubsystem::RegisterBindDelegate(const TSharedPtr<puerts::FJ
 void UPuertsAutoMixinSubsystem::Reset()
 {
 	BindCallbacks.Empty();
+
+#if WITH_EDITOR
+	BindedClasses.Empty();
+#endif
+
+	StopJavaScript();
 }
 
 void UPuertsAutoMixinSubsystem::StartJavaScript()
@@ -317,6 +355,8 @@ void UPuertsAutoMixinSubsystem::StartJavaScript()
 	);
 	SourceLoadedCallback = [this](const FString& InPath)
 	{
+		UE_LOG(LogPuertsAutoMixin, Log, TEXT("Watch Path: %s"), *InPath);
+
 		if (SourceFileWatcher.IsValid())
 		{
 			SourceFileWatcher->OnSourceLoaded(InPath);
@@ -399,42 +439,18 @@ void UPuertsAutoMixinSubsystem::CallMixin(UClass* Class, const FString& Module, 
 
 void UPuertsAutoMixinSubsystem::ExecuteMixin(FPuertsAutoMixinData& Data, UClass* Class, const FString& Module)
 {
-#if WITH_EDITOR
-	static FName SpecialFunctionName = FName(TEXT("__PuertsAutoMixinSucceeded"));
-#endif
-
 	if (Data.BindedClasses.Contains(Class))
 	{
-#if WITH_EDITOR
-		// 兼容蓝图Recompile导致FuncMap被清空的情况
-		if (Class->FindFunctionByName(SpecialFunctionName, EIncludeSuperFlag::Type::ExcludeSuper))
-		{
-			return;
-		}
-		Data.BindedModules.Remove(Module);
-		if (Data.BindCallback.IsBound())
-		{
-			Data.BindCallback.Execute(Class, "");
-		}
-#else
 		return;
-#endif
 	}
 	if (Data.BindedModules.Contains(Module))
 	{
 		return;
 	}
-	Data.BindedClasses.Emplace(Class);
+	Data.BindedClasses.Emplace(Class, Module);
 	Data.BindedModules.Emplace(Module);
-	Data.ClassToModule.Add(Class, Module);
 
 	SCOPED_NAMED_EVENT(UPuertsAutoMixin_Mixin, FColor::Red);
-
-#if WITH_EDITOR
-	// 给绑定过的Class增加一个特殊的标记，用于判断是否绑定过，兼容重编译导致的重置
-	auto Func = NewObject<UFunction>(Class, SpecialFunctionName);
-	Class->AddFunctionToFunctionMap(Func, SpecialFunctionName);
-#endif
 
 	if (Data.BindCallback.IsBound())
 	{

@@ -33,9 +33,9 @@ public:
         config
         , EditAnywhere
         , Category = "Default PuertsAutoMixin Environment"
-        , meta = (DisplayName = "Debug Port", defaultValue = 8080)
+        , meta = (DisplayName = "Debug Port", defaultValue = 8081)
     )
-    int32 DebugPort = 8080;
+    int32 DebugPort = 8081;
 
     UPROPERTY(config
         , EditAnywhere

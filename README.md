@@ -16,6 +16,7 @@
 
 - 按需mixin而非启动时全部加载
 - 每个类（C++类或蓝图类）指定绑定的JavaScript类
+- 父子类mixin支持（纯TypeScript类与UObject基类）
 - 编辑器下mixin支持（Beta）
 
 ## 参考项目

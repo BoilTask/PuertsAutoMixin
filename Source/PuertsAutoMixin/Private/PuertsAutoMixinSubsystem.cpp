@@ -122,11 +122,14 @@ void UPuertsAutoMixinSubsystem::OnEndPlayMap()
 void UPuertsAutoMixinSubsystem::NotifyUObjectCreated(const UObjectBase* ObjectBase, int32 Index)
 {
 	UObject* Object = (UObject*)ObjectBase;
+	// UE_LOG(LogPuertsAutoMixin, Display, TEXT("NotifyUObjectCreated:%s"), *Object->GetName());
 	TryBind(Object);
 }
 
 void UPuertsAutoMixinSubsystem::NotifyUObjectDeleted(const UObjectBase* ObjectBase, int32 Index)
 {
+	// UObject* Object = (UObject*)ObjectBase;
+	// UE_LOG(LogPuertsAutoMixin, Display, TEXT("NotifyUObjectDeleted:%s"), *Object->GetName());
 }
 
 void UPuertsAutoMixinSubsystem::OnUObjectArrayShutdown()
@@ -228,8 +231,8 @@ void UPuertsAutoMixinSubsystem::TryBind(UObject* Object, FPuertsAutoMixinData* S
 	}
 
 	// 递归查找所有父类，从最顶层的UObject子类开始绑定
-	TArray<const UClass*> ClassHierarchy;
-	const UClass* CurrentClass = Class;
+	TArray<UClass*> ClassHierarchy;
+	UClass* CurrentClass = Class;
 	while (CurrentClass && CurrentClass->IsChildOf<UObject>())
 	{
 		ClassHierarchy.Add(CurrentClass);
@@ -238,7 +241,7 @@ void UPuertsAutoMixinSubsystem::TryBind(UObject* Object, FPuertsAutoMixinData* S
 
 	for (int32 i = ClassHierarchy.Num() - 1; i >= 0; --i)
 	{
-		const UClass* HierarchyClass = ClassHierarchy[i];
+		UClass* HierarchyClass = ClassHierarchy[i];
 		if (!HierarchyClass->ImplementsInterface(InterfaceClass))
 		{
 			continue;
@@ -270,10 +273,9 @@ void UPuertsAutoMixinSubsystem::TryBind(UObject* Object, FPuertsAutoMixinData* S
 void UPuertsAutoMixinSubsystem::RegisterBindDelegate(const TSharedPtr<puerts::FJsEnv>& JsEnv
                                                      , const FPuertsAutoMixinDelegate& Callback)
 {
-	auto& Instance = GetInstance();
 	FPuertsAutoMixinData Data;
 	Data.BindCallback = Callback;
-	FPuertsAutoMixinData& AddedData = Instance.BindCallbacks.Add(JsEnv, Data);
+	FPuertsAutoMixinData& AddedData = BindCallbacks.Add(JsEnv, Data);
 
 	// 处理在绑定前已经被创建的对象，只调用刚注册的Callback
 	for (const auto Class : TObjectRange<UClass>())
@@ -284,8 +286,7 @@ void UPuertsAutoMixinSubsystem::RegisterBindDelegate(const TSharedPtr<puerts::FJ
 
 void UPuertsAutoMixinSubsystem::Reset()
 {
-	auto& Instance = GetInstance();
-	Instance.BindCallbacks.Empty();
+	BindCallbacks.Empty();
 }
 
 void UPuertsAutoMixinSubsystem::StartJavaScript()
@@ -314,11 +315,11 @@ void UPuertsAutoMixinSubsystem::StartJavaScript()
 #endif
 
 	DefaultJsEnv = MakeShared<puerts::FJsEnv>(std::make_unique<puerts::DefaultJSModuleLoader>(
-										   TEXT("JavaScript")
-									   )
-									   , std::make_shared<puerts::FDefaultLogger>()
-									   , Setting->DebugPort
-									   , SourceLoadedCallback
+		                                          TEXT("JavaScript")
+	                                          )
+	                                          , std::make_shared<puerts::FDefaultLogger>()
+	                                          , Setting->DebugPort
+	                                          , SourceLoadedCallback
 
 	);
 	TArray<TPair<FString, UObject*>> Arguments;
@@ -338,7 +339,9 @@ void UPuertsAutoMixinSubsystem::HotReloadJavaScriptEnv(const FString& Path)
 		if (FFileHelper::LoadFileToArray(Source, *Path))
 		{
 			UE_LOG(LogPuertsAutoMixin, Log, TEXT("start ReloadSource %s"), *Path);
-			DefaultJsEnv->ReloadSource(Path, puerts::PString(reinterpret_cast<const char*>(Source.GetData()), Source.Num()));
+			DefaultJsEnv->ReloadSource(Path
+			                           , puerts::PString(reinterpret_cast<const char*>(Source.GetData()), Source.Num())
+			);
 			UE_LOG(LogPuertsAutoMixin, Log, TEXT("end ReloadSource %s"), *Path);
 		}
 		else
@@ -348,10 +351,8 @@ void UPuertsAutoMixinSubsystem::HotReloadJavaScriptEnv(const FString& Path)
 	}
 }
 
-void UPuertsAutoMixinSubsystem::CallMixin(const UClass* Class, const FString& Module, FPuertsAutoMixinData* SpecificData)
+void UPuertsAutoMixinSubsystem::CallMixin(UClass* Class, const FString& Module, FPuertsAutoMixinData* SpecificData)
 {
-	auto& Instance = GetInstance();
-
 	// 如果指定了特定的Data，只处理该Data
 	if (SpecificData)
 	{
@@ -360,28 +361,56 @@ void UPuertsAutoMixinSubsystem::CallMixin(const UClass* Class, const FString& Mo
 	}
 
 	// 否则遍历所有BindCallbacks
-	for (auto& It : Instance.BindCallbacks)
+	for (auto& It : BindCallbacks)
 	{
 		const auto& JsEnv = It.Key;
 		if (!JsEnv.IsValid())
 		{
-			Instance.BindCallbacks.Remove(It.Key);
+			BindCallbacks.Remove(It.Key);
 			continue;
 		}
 		ExecuteMixin(It.Value, Class, Module);
 	}
 }
 
-void UPuertsAutoMixinSubsystem::ExecuteMixin(FPuertsAutoMixinData& Data, const UClass* Class, const FString& Module)
+void UPuertsAutoMixinSubsystem::ExecuteMixin(FPuertsAutoMixinData& Data, UClass* Class, const FString& Module)
 {
-	if (Data.BindedClasses.Contains(Class) || Data.BindedModules.Contains(Module))
+#if WITH_EDITOR
+	static FName SpecialFunctionName = FName(TEXT("__PuertsAutoMixinSucceeded"));
+#endif
+
+	if (Data.BindedClasses.Contains(Class))
+	{
+#if WITH_EDITOR
+		// 兼容蓝图Recompile导致FuncMap被清空的情况
+		if (Class->FindFunctionByName(SpecialFunctionName, EIncludeSuperFlag::Type::ExcludeSuper))
+		{
+			return;
+		}
+		Data.BindedModules.Remove(Module);
+		if (Data.BindCallback.IsBound())
+		{
+			Data.BindCallback.Execute(Class, "");
+		}
+#else
+		return;
+#endif
+	}
+	if (Data.BindedModules.Contains(Module))
 	{
 		return;
 	}
 	Data.BindedClasses.Emplace(Class);
 	Data.BindedModules.Emplace(Module);
+	Data.ClassToModule.Add(Class, Module);
 
 	SCOPED_NAMED_EVENT(UPuertsAutoMixin_Mixin, FColor::Red);
+
+#if WITH_EDITOR
+	// 给绑定过的Class增加一个特殊的标记，用于判断是否绑定过，兼容重编译导致的重置
+	auto Func = NewObject<UFunction>(Class, SpecialFunctionName);
+	Class->AddFunctionToFunctionMap(Func, SpecialFunctionName);
+#endif
 
 	if (Data.BindCallback.IsBound())
 	{

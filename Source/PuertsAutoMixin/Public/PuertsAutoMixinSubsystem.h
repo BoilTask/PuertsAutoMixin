@@ -12,14 +12,16 @@ struct FPuertsAutoMixinData
 	FPuertsAutoMixinDelegate BindCallback;
 	TSet<const UClass*> BindedClasses;
 	TSet<FString> BindedModules;
+	TMap<const UClass*, FString> ClassToModule;
 };
 
 UCLASS()
 class PUERTSAUTOMIXIN_API UPuertsAutoMixinSubsystem : public UEngineSubsystem,
-							  public FUObjectArray::FUObjectCreateListener,
-							  public FUObjectArray::FUObjectDeleteListener
+                                                      public FUObjectArray::FUObjectCreateListener,
+                                                      public FUObjectArray::FUObjectDeleteListener
 {
 	GENERATED_BODY()
+
 public:
 	static UPuertsAutoMixinSubsystem& GetInstance()
 	{
@@ -58,8 +60,8 @@ public:
 	void Reset();
 
 private:
-	FORCEINLINE void CallMixin(const UClass* Class, const FString& Module, FPuertsAutoMixinData* SpecificData = nullptr);
-	FORCEINLINE void ExecuteMixin(FPuertsAutoMixinData& Data, const UClass* Class, const FString& Module);
+	inline void CallMixin(UClass* Class, const FString& Module, FPuertsAutoMixinData* SpecificData = nullptr);
+	static inline void ExecuteMixin(FPuertsAutoMixinData& Data, UClass* Class, const FString& Module);
 
 private:
 	bool bActive = false;

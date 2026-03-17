@@ -1,5 +1,7 @@
 ﻿#include "PuertsAutoMixinSubsystem.h"
 
+#include "GameDelegates.h"
+
 #include "PuertsAutoMixinModule.h"
 #include "PuertsAutoMixinSetting.h"
 #include "PuertsInterface.h"
@@ -13,23 +15,25 @@ void UPuertsAutoMixinSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	Super::Initialize(Collection);
 
 #if WITH_EDITOR
-	StartAutoBind();
-	// if (!IsRunningGame())
-	// {
-	// 	FEditorDelegates::PreBeginPIE.AddRaw(this, &FPuertsAutoMixinModule::OnPreBeginPIE);
-	// 	FEditorDelegates::PostPIEStarted.AddRaw(this, &FPuertsAutoMixinModule::OnPostPIEStarted);
-	// 	FEditorDelegates::EndPIE.AddRaw(this, &FPuertsAutoMixinModule::OnEndPIE);
-	// 	FGameDelegates::Get().GetEndPlayMapDelegate().AddRaw(this, &FPuertsAutoMixinModule::OnEndPlayMap);
-	// }
-	// if (IsRunningGame() || IsRunningDedicatedServer())
-	// {
-	// 	StartAutoBind();
-	// }
+	bool bOnlyGame = IsRunningGame() || IsRunningDedicatedServer();
+	const auto& Setting = GetMutableDefault<UPuertsAutoMixinSetting>();
+	if (!bOnlyGame)
+	{
+		FEditorDelegates::PreBeginPIE.AddUObject(this, &UPuertsAutoMixinSubsystem::OnPreBeginPIE);
+		FEditorDelegates::EndPIE.AddUObject(this, &UPuertsAutoMixinSubsystem::OnEndPIE);
+		FGameDelegates::Get().GetEndPlayMapDelegate().AddUObject(this, &UPuertsAutoMixinSubsystem::OnEndPlayMap);
+	}
+	if (Setting->bEnableEnvInEditor || bOnlyGame)
+	{
+		StartAutoBind();
+	}
+	if ((bOnlyGame && Setting->bEnableEnvInGame) || (!bOnlyGame && Setting->bEnableEnvInEditor))
+	{
+		StartJavaScript();
+	}
 #else
 	StartAutoBind();
 #endif
-
-	StartJavaScript();
 }
 
 void UPuertsAutoMixinSubsystem::Deinitialize()
@@ -38,14 +42,7 @@ void UPuertsAutoMixinSubsystem::Deinitialize()
 
 	StopBind();
 
-	if (DefaultJsEnv.IsValid())
-	{
-		DefaultJsEnv.Reset();
-	}
-	if (SourceFileWatcher.IsValid())
-	{
-		SourceFileWatcher.Reset();
-	}
+	StopJavaScript();
 
 	Super::Deinitialize();
 }
@@ -99,24 +96,35 @@ void UPuertsAutoMixinSubsystem::StopListen()
 void UPuertsAutoMixinSubsystem::OnPreBeginPIE(bool bIsSimulating)
 {
 	StartAutoBind();
-}
 
-void UPuertsAutoMixinSubsystem::OnPostPIEStarted(bool bIsSimulating)
-{
+	auto Setting = GetMutableDefault<UPuertsAutoMixinSetting>();
+	if (!Setting->bEnableEnvInGame)
+	{
+		StopJavaScript();
+	}
 }
 
 void UPuertsAutoMixinSubsystem::OnEndPIE(bool bIsSimulating)
 {
+	const auto& Setting = GetMutableDefault<UPuertsAutoMixinSetting>();
+	if (Setting->bEnableEnvInEditor && !Setting->bEnableEnvInGame)
+	{
+		StartJavaScript();
+	}
+}
+
+void UPuertsAutoMixinSubsystem::OnEndPlayMap()
+{
+	const auto& Setting = GetMutableDefault<UPuertsAutoMixinSetting>();
+	if (!Setting->bEnableEnvInEditor && !Setting->bEnableEnvInGame)
+	{
+		StopBind();
+	}
 }
 
 void UPuertsAutoMixinSubsystem::BindMixin(const FPuertsAutoMixinDelegate& BindCallback)
 {
 	RegisterBindDelegate(DefaultJsEnv, BindCallback);
-}
-
-void UPuertsAutoMixinSubsystem::OnEndPlayMap()
-{
-	StopBind();
 }
 
 void UPuertsAutoMixinSubsystem::NotifyUObjectCreated(const UObjectBase* ObjectBase, int32 Index)
@@ -291,6 +299,8 @@ void UPuertsAutoMixinSubsystem::Reset()
 
 void UPuertsAutoMixinSubsystem::StartJavaScript()
 {
+	UE_LOG(LogPuertsAutoMixin, Display, TEXT("PuertsAutoMixinSubsystem Start DefaultJavaScript"));
+
 	UPuertsAutoMixinSetting* Setting = GetMutableDefault<UPuertsAutoMixinSetting>();
 	if (!IsValid(Setting))
 	{
@@ -329,6 +339,20 @@ void UPuertsAutoMixinSubsystem::StartJavaScript()
 		DefaultJsEnv->WaitDebugger(Setting->WaitDebuggerTimeout);
 	}
 	DefaultJsEnv->Start(Setting->StartModule, Arguments);
+}
+
+void UPuertsAutoMixinSubsystem::StopJavaScript()
+{
+	UE_LOG(LogPuertsAutoMixin, Display, TEXT("PuertsAutoMixinSubsystem Stop DefaultJavaScript"));
+
+	if (DefaultJsEnv.IsValid())
+	{
+		DefaultJsEnv.Reset();
+	}
+	if (SourceFileWatcher.IsValid())
+	{
+		SourceFileWatcher.Reset();
+	}
 }
 
 void UPuertsAutoMixinSubsystem::HotReloadJavaScriptEnv(const FString& Path)

@@ -40,8 +40,6 @@ public:
 
 	void OnPreBeginPIE(bool bIsSimulating);
 
-	void OnPostPIEStarted(bool bIsSimulating);
-
 	void OnEndPIE(bool bIsSimulating);
 
 	void OnEndPlayMap();
@@ -75,6 +73,7 @@ public:
 
 private:
 	void StartJavaScript();
+	void StopJavaScript();
 	void HotReloadJavaScriptEnv(const FString& Path);
 
 private:

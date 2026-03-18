@@ -389,10 +389,12 @@ void UPuertsAutoMixinSubsystem::StopJavaScript()
 	{
 		DefaultJsEnv.Reset();
 	}
+#if WITH_EDITOR
 	if (SourceFileWatcher.IsValid())
 	{
 		SourceFileWatcher.Reset();
 	}
+#endif
 }
 
 void UPuertsAutoMixinSubsystem::HotReloadJavaScriptEnv(const FString& Path)

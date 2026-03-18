@@ -24,4 +24,5 @@ public:
     TSharedPtr<FUICommandInfo> BindToPuerts;
     TSharedPtr<FUICommandInfo> UnbindFromPuerts;
     TSharedPtr<FUICommandInfo> RevealInExplorer;
+    TSharedPtr<FUICommandInfo> DefaultModulePath;
 };

@@ -28,6 +28,7 @@ FPuertsAutoMixinEditorStyle::FPuertsAutoMixinEditorStyle()
 	Set("PuertsAutoMixinEditor.CopyAsRelativePath", new IMAGE_BRUSH("Icons/icon_copy_40x", Icon40x40));
 	Set("PuertsAutoMixinEditor.BindToPuerts", new IMAGE_BRUSH("Icons/icon_bind_to_puerts_40x", Icon40x40));
 	Set("PuertsAutoMixinEditor.UnbindFromPuerts", new IMAGE_BRUSH("Icons/icon_unbind_from_puerts_40x", Icon40x40));
+	Set("PuertsAutoMixinEditor.DefaultModulePath", new IMAGE_BRUSH("Icons/icon_create_template_40x", Icon40x40));
 
 	FSlateStyleRegistry::RegisterSlateStyle(*this);
 }

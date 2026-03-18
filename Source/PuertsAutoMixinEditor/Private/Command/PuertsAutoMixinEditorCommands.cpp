@@ -9,6 +9,7 @@ void FPuertsAutoMixinEditorCommands::RegisterCommands()
     UI_COMMAND(BindToPuerts, "Bind", "Implement PuertsInterface", EUserInterfaceActionType::Button, FInputChord());
     UI_COMMAND(UnbindFromPuerts, "Unbind", "Remove the implementation of PuertsInterface", EUserInterfaceActionType::Button, FInputChord());
     UI_COMMAND(RevealInExplorer, "Reveal in Explorer", "Reveal Puerts file in explorer", EUserInterfaceActionType::Button, FInputChord());
+    UI_COMMAND(DefaultModulePath, "Default Module Path", "Set GetJavaScriptModule return value to default", EUserInterfaceActionType::Button, FInputChord());
 }
 
 #undef LOCTEXT_NAMESPACE

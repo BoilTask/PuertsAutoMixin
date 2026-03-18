@@ -1,5 +1,6 @@
-﻿#include "PuertsAutoMixinEditorToolbar.h"
+#include "PuertsAutoMixinEditorToolbar.h"
 #include "HAL/PlatformApplicationMisc.h"
+#include "HAL/FileManager.h"
 #include "Interfaces/IPluginManager.h"
 #include "BlueprintEditor.h"
 #include "PuertsAutoMixinModule.h"
@@ -13,6 +14,7 @@
 #include "Command/PuertsAutoMixinEditorCommands.h"
 #include "Library/PuertsAutoMixinEditorLibrary.h"
 #include "Runtime/Slate/Private/Framework/Docking/SDockingTabWell.h"
+#include "K2Node_FunctionResult.h"
 
 #define LOCTEXT_NAMESPACE "FUnPuertsEditorModule"
 
@@ -46,6 +48,9 @@ void FPuertsAutoMixinEditorToolbar::BindCommands()
 	);
 	CommandList->MapAction(Commands.RevealInExplorer
 	                       , FExecuteAction::CreateRaw(this, &FPuertsAutoMixinEditorToolbar::RevealInExplorer_Executed)
+	);
+	CommandList->MapAction(Commands.DefaultModulePath
+	                       , FExecuteAction::CreateRaw(this, &FPuertsAutoMixinEditorToolbar::DefaultModule_Executed)
 	);
 }
 
@@ -84,6 +89,10 @@ void FPuertsAutoMixinEditorToolbar::BuildToolbar(FToolBarBuilder& ToolbarBuilder
 					MenuBuilder.AddMenuEntry(Commands.CreatePuertsTemplate
 					                         , NAME_None
 					                         , LOCTEXT("CreatePuertsTemplate", "Create Puerts Template")
+					);
+					MenuBuilder.AddMenuEntry(Commands.DefaultModulePath
+					                         , NAME_None
+					                         , LOCTEXT("DefaultModulePath", "Default Module Path")
 					);
 					MenuBuilder.AddMenuEntry(Commands.UnbindFromPuerts, NAME_None, LOCTEXT("Unbind", "Unbind"));
 				}
@@ -199,7 +208,7 @@ void FPuertsAutoMixinEditorToolbar::BindToPuerts_Executed() const
 		return;
 	}
 
-	const auto Package = Blueprint->GetTypedOuter(UPackage::StaticClass());
+	const auto Package = Blueprint->GetPackage();
 	FString PuertsModuleName = Package->GetName();
 
 	if (!PuertsModuleName.IsEmpty())
@@ -466,6 +475,101 @@ void FPuertsAutoMixinEditorToolbar::CopyAsRelativePath_Executed() const
 	const auto FileName = GetScriptRealPath(ModuleName);
 
 	FPlatformApplicationMisc::ClipboardCopy(*FileName);
+}
+
+void FPuertsAutoMixinEditorToolbar::DefaultModule_Executed() const
+{
+	const auto Blueprint = Cast<UBlueprint>(ContextObject);
+	if (!IsValid(Blueprint))
+	{
+		return;
+	}
+
+	const auto TargetClass = Blueprint->GeneratedClass;
+	if (!IsValid(TargetClass))
+	{
+		return;
+	}
+
+	if (!TargetClass->ImplementsInterface(UPuertsInterface::StaticClass()))
+	{
+		return;
+	}
+
+	const auto Package = Blueprint->GetPackage();
+	FString NewModuleName = Package->GetName();
+
+	if (NewModuleName.IsEmpty())
+	{
+		return;
+	}
+
+	const auto Func = TargetClass->FindFunctionByName(FName("GetJavaScriptModule"));
+	if (!IsValid(Func))
+	{
+		return;
+	}
+
+	FString OldModuleName;
+	TargetClass->GetDefaultObject()->ProcessEvent(Func, &OldModuleName);
+
+	UEdGraph* TargetGraph = FBlueprintEditorUtils::FindScopeGraph(Blueprint, Func);
+	if (!TargetGraph)
+	{
+		return;
+	}
+
+	UK2Node_FunctionResult* ResultNode = nullptr;
+	for (UEdGraphNode* Node : TargetGraph->Nodes)
+	{
+		ResultNode = Cast<UK2Node_FunctionResult>(Node);
+		if (ResultNode)
+		{
+			break;
+		}
+	}
+
+	if (!ResultNode)
+	{
+		return;
+	}
+
+	for (UEdGraphPin* Pin : ResultNode->Pins)
+	{
+		if (Pin->PinName != UEdGraphSchema_K2::PN_Execute && Pin->Direction == EGPD_Input)
+		{
+			Pin->DefaultValue = NewModuleName;
+			break;
+		}
+	}
+
+	if (!OldModuleName.IsEmpty() && OldModuleName != NewModuleName)
+	{
+		const auto OldFilePath = GetScriptRealPath(OldModuleName);
+		const auto NewFilePath = GetScriptRealPath(NewModuleName);
+
+		if (FPaths::FileExists(OldFilePath) && !FPaths::FileExists(NewFilePath))
+		{
+			IFileManager::Get().Move(*NewFilePath, *OldFilePath);
+		}
+	}
+
+#if ENGINE_MAJOR_VERSION > 4 || (ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 26)
+
+	const auto BlueprintEditors = FModuleManager::LoadModuleChecked<FBlueprintEditorModule>("Kismet").
+		GetBlueprintEditors();
+	for (auto BlueprintEditor : BlueprintEditors)
+	{
+		const auto MyBlueprintEditor = static_cast<FBlueprintEditor*>(&BlueprintEditors[0].Get());
+		if (!MyBlueprintEditor || MyBlueprintEditor->GetBlueprintObj() != Blueprint)
+		{
+			continue;
+		}
+		MyBlueprintEditor->Compile();
+		MyBlueprintEditor->OpenGraphAndBringToFront(TargetGraph);
+	}
+
+#endif
 }
 
 #undef LOCTEXT_NAMESPACE

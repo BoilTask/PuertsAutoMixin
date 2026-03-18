@@ -1,4 +1,4 @@
-﻿// Tencent is pleased to support the open source community by making UnPuerts available.
+// Tencent is pleased to support the open source community by making UnPuerts available.
 // 
 // Copyright (C) 2019 THL A29 Limited, a Tencent company. All rights reserved.
 //
@@ -39,6 +39,8 @@ public:
     void UnbindFromPuerts_Executed() const;
 
     void RevealInExplorer_Executed();
+
+    void DefaultModule_Executed() const;
 
 protected:
     virtual void BindCommands();

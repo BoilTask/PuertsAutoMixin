@@ -545,12 +545,26 @@ void FPuertsAutoMixinEditorToolbar::DefaultModule_Executed() const
 
 	if (!OldModuleName.IsEmpty() && OldModuleName != NewModuleName)
 	{
-		const auto OldFilePath = GetScriptRealPath(OldModuleName);
-		const auto NewFilePath = GetScriptRealPath(NewModuleName);
-
-		if (FPaths::FileExists(OldFilePath) && !FPaths::FileExists(NewFilePath))
+		FString SuperModuleName;
+		const auto SuperClass = TargetClass->GetSuperClass();
+		if (SuperClass && SuperClass->ImplementsInterface(UPuertsInterface::StaticClass()))
 		{
-			IFileManager::Get().Move(*NewFilePath, *OldFilePath);
+			const auto SuperFunc = SuperClass->FindFunctionByName(FName("GetJavaScriptModule"));
+			if (SuperFunc)
+			{
+				SuperClass->GetDefaultObject()->ProcessEvent(SuperFunc, &SuperModuleName);
+			}
+		}
+
+		if (OldModuleName != SuperModuleName)
+		{
+			const auto OldFilePath = GetScriptRealPath(OldModuleName);
+			const auto NewFilePath = GetScriptRealPath(NewModuleName);
+
+			if (FPaths::FileExists(OldFilePath) && !FPaths::FileExists(NewFilePath))
+			{
+				IFileManager::Get().Move(*NewFilePath, *OldFilePath);
+			}
 		}
 	}
 

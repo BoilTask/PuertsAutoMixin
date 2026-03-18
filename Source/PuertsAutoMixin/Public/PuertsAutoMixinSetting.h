@@ -14,9 +14,9 @@ public:
         config
         , EditAnywhere
         , Category = "Default PuertsAutoMixin Environment"
-        , meta = (DisplayName = "Enable JS Env In Editor", defaultValue = true)
+        , meta = (DisplayName = "Enable JS Env In Editor", defaultValue = false)
     )
-    bool bEnableEnvInEditor = true;
+    bool bEnableEnvInEditor = false;
     UPROPERTY(
         config
         , EditAnywhere

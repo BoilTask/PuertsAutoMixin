@@ -27,7 +27,7 @@ EPuertsBindingStatus GetBindingStatus(const UBlueprint* Blueprint)
 		return EPuertsBindingStatus::NotBound;
 	}
 
-	const auto ModuleName = GetJavaScriptModule(Target);
+	const auto ModuleName = UPuertsAutoMixinLibrary::GetJavaScriptModule(Target);
 	if (ModuleName.IsEmpty())
 	{
 		return EPuertsBindingStatus::Unknown;

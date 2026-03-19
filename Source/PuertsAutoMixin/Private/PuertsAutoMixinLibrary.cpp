@@ -2,7 +2,7 @@
 
 #include "PuertsInterface.h"
 
-FString GetJavaScriptModule(const UObject* Object)
+FString UPuertsAutoMixinLibrary::GetJavaScriptModule(const UObject* Object)
 {
 	const UObject* CDO;
 	if (Object->HasAnyFlags(RF_ClassDefaultObject | RF_ArchetypeObject))

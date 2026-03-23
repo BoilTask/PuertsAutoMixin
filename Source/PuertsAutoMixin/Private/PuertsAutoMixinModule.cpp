@@ -17,8 +17,7 @@ constexpr EInternalObjectFlags AsyncObjectFlags = EInternalObjectFlags_AsyncLoad
 struct FPuertsAutoMixinData
 {
 	FPuertsAutoMixinDelegate BindCallback;
-	TMap<const UClass*, FString> BindedClasses;
-	TSet<FString> BindedModules;
+	TSet<TWeakObjectPtr<UClass>> BindedClasses;
 };
 
 class PUERTSAUTOMIXIN_API FPuertsAutoMixinModule : public IPuertsAutoMixinModule,
@@ -272,9 +271,8 @@ class PUERTSAUTOMIXIN_API FPuertsAutoMixinModule : public IPuertsAutoMixinModule
 					for (auto& It : BindCallbacks)
 					{
 						auto& Data = It.Value;
-						if (const auto& Module = Data.BindedClasses.Find(HierarchyClass))
+						if (Data.BindedClasses.Contains(HierarchyClass))
 						{
-							Data.BindedModules.Remove(*Module);
 							Data.BindedClasses.Remove(HierarchyClass);
 							Data.BindCallback.ExecuteIfBound(HierarchyClass, FString());
 						}
@@ -303,6 +301,21 @@ class PUERTSAUTOMIXIN_API FPuertsAutoMixinModule : public IPuertsAutoMixinModule
 			if (HierarchyModule.IsEmpty())
 			{
 				continue;
+			}
+
+			// 如果Module和Super一样，忽略，因为Super会去绑定
+			UClass* SuperClass = HierarchyClass->GetSuperClass();
+			if (SuperClass && SuperClass->ImplementsInterface(InterfaceClass))
+			{
+				const UObject* SuperCDO = SuperClass->GetDefaultObject(false);
+				if (SuperCDO && !SuperCDO->HasAnyFlags(RF_NeedInitialization))
+				{
+					FString SuperModule = IPuertsInterface::Execute_GetJavaScriptModule(SuperCDO);
+					if (HierarchyModule == SuperModule)
+					{
+						continue;
+					}
+				}
 			}
 
 #if WITH_EDITOR
@@ -454,12 +467,7 @@ class PUERTSAUTOMIXIN_API FPuertsAutoMixinModule : public IPuertsAutoMixinModule
 		{
 			return;
 		}
-		if (Data.BindedModules.Contains(Module))
-		{
-			return;
-		}
-		Data.BindedClasses.Emplace(Class, Module);
-		Data.BindedModules.Emplace(Module);
+		Data.BindedClasses.Emplace(Class);
 
 		SCOPED_NAMED_EVENT(UPuertsAutoMixin_Mixin, FColor::Red);
 

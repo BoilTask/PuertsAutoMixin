@@ -14,8 +14,7 @@ public class PuertsAutoMixinEditor : ModuleRules
 		PrivateIncludePaths.AddRange(
 			new[]
 			{
-				"Puerts/Private"
-				, "PuertsAutoMixin/Public"
+				"PuertsAutoMixin/Public"
 				, "PuertsAutoMixinEditor/Public"
 				, Path.Combine(EngineDir, "Source/Editor/AnimationBlueprintEditor/Private")
 				, Path.Combine(EngineDir, "Source/Runtime/Slate/Private"),
